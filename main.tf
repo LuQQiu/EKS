@@ -21,12 +21,19 @@ data "aws_availability_zones" "available" {
 }
 
 locals {
-  cluster_name = "test-eks-${random_string.suffix.result}"
+  cluster_name  = "test-eks-${random_string.suffix.result}"
+  key_pair_name = trimsuffix(basename(var.key_file), ".pem")
 }
 
 resource "random_string" "suffix" {
   length  = 8
   special = false
+}
+
+resource "aws_key_pair" "key_pair" {
+  count      = var.key_file == "" ? 1 : 0
+  key_name   = "key_pair_eks${random_string.suffix.result}"
+  public_key = file(var.ssh_public_key_file)
 }
 
 resource "aws_security_group" "worker_group_mgmt_one" {
@@ -116,18 +123,22 @@ module "eks_cluster" {
 
   worker_groups = [
     {
-      name                          = "worker-group-1"
-      instance_type                 = "t3.small"
+      name                          = "alluxio-master"
+      instance_type                 = "m5.xlarge"
       additional_userdata           = "echo foo bar"
-      asg_desired_capacity          = 2
+      asg_desired_capacity          = 1
       additional_security_group_ids = [aws_security_group.worker_group_mgmt_one.id]
+      public_ip                     = true
+      key_name                      = var.key_file == "" ? aws_key_pair.key_pair[0].key_name : local.key_pair_name
     },
     {
-      name                          = "worker-group-2"
-      instance_type                 = "t3.medium"
+      name                          = "alluxio-worker"
+      instance_type                 = "m5.xlarge"
       additional_userdata           = "echo foo bar"
       additional_security_group_ids = [aws_security_group.worker_group_mgmt_two.id]
       asg_desired_capacity          = 1
+      public_ip                     = true
+      key_name                      = var.key_file == "" ? aws_key_pair.key_pair[0].key_name : local.key_pair_name
     },
   ]
 
