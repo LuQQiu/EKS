@@ -36,33 +36,33 @@ resource "aws_key_pair" "key_pair" {
   public_key = file(var.ssh_public_key_file)
 }
 
-resource "aws_security_group" "worker_group_mgmt_one" {
-  name_prefix = "worker_group_mgmt_one"
+resource "aws_security_group" "worker_group_mgmt" {
+  name_prefix = "worker_group_mgmt"
   vpc_id      = module.vpc.vpc_id
 
+  // allow all inbound traffic within security group
   ingress {
-    from_port = 22
-    to_port   = 22
-    protocol  = "tcp"
-
-    cidr_blocks = [
-      "10.0.0.0/8",
-    ]
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
+    self      = true
   }
-}
 
-resource "aws_security_group" "worker_group_mgmt_two" {
-  name_prefix = "worker_group_mgmt_two"
-  vpc_id      = module.vpc.vpc_id
+  // allow all outbound traffic to anywhere
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
+  // allow SSH inbound traffic from anywhere
   ingress {
-    from_port = 22
-    to_port   = 22
-    protocol  = "tcp"
-
-    cidr_blocks = [
-      "192.168.0.0/16",
-    ]
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "TCP"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
@@ -111,7 +111,8 @@ module "eks_cluster" {
   source          = "github.com/terraform-aws-modules/terraform-aws-eks/"
   cluster_name    = local.cluster_name
   cluster_version = "1.17"
-  subnets         = module.vpc.private_subnets
+  // subnets         = module.vpc.private_subnets
+  subnets = module.vpc.public_subnets // any problems of using public subnets?
 
   tags = {
     Environment = "test"
@@ -127,7 +128,7 @@ module "eks_cluster" {
       instance_type                 = "m5.xlarge"
       additional_userdata           = "echo foo bar"
       asg_desired_capacity          = 1
-      additional_security_group_ids = [aws_security_group.worker_group_mgmt_one.id]
+      additional_security_group_ids = [aws_security_group.worker_group_mgmt.id]
       public_ip                     = true
       key_name                      = var.key_file == "" ? aws_key_pair.key_pair[0].key_name : local.key_pair_name
     },
@@ -135,7 +136,7 @@ module "eks_cluster" {
       name                          = "alluxio-worker"
       instance_type                 = "m5.xlarge"
       additional_userdata           = "echo foo bar"
-      additional_security_group_ids = [aws_security_group.worker_group_mgmt_two.id]
+      additional_security_group_ids = [aws_security_group.worker_group_mgmt.id]
       asg_desired_capacity          = 1
       public_ip                     = true
       key_name                      = var.key_file == "" ? aws_key_pair.key_pair[0].key_name : local.key_pair_name
