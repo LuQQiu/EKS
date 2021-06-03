@@ -125,19 +125,23 @@ module "eks_cluster" {
   worker_groups = [
     {
       name                          = "alluxio-master"
-      instance_type                 = "m5.xlarge"
+      instance_type                 = "p3.2xlarge"
       additional_userdata           = "echo foo bar"
       asg_desired_capacity          = 1
+      root_volume_type              = "gp2"
+      root_volume_size              = "1024"
       additional_security_group_ids = [aws_security_group.worker_group_mgmt.id]
       public_ip                     = true
       key_name                      = var.key_file == "" ? aws_key_pair.key_pair[0].key_name : local.key_pair_name
     },
     {
       name                          = "alluxio-worker"
-      instance_type                 = "m5.xlarge"
+      instance_type                 = "p3.2xlarge"
       additional_userdata           = "echo foo bar"
       additional_security_group_ids = [aws_security_group.worker_group_mgmt.id]
-      asg_desired_capacity          = 1
+      asg_desired_capacity          = 2
+      root_volume_type              = "gp2"
+      root_volume_size              = "1024"
       public_ip                     = true
       key_name                      = var.key_file == "" ? aws_key_pair.key_pair[0].key_name : local.key_pair_name
     },
