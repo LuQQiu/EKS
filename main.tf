@@ -125,7 +125,7 @@ module "eks_cluster" {
   worker_groups = [
     {
       name                          = "alluxio-master"
-      instance_type                 = "p3.2xlarge"
+      instance_type                 = "m5.4xlarge"
       additional_userdata           = "echo foo bar"
       asg_desired_capacity          = 1
       root_volume_type              = "gp2"
@@ -136,7 +136,7 @@ module "eks_cluster" {
     },
     {
       name                          = "alluxio-worker"
-      instance_type                 = "p3.2xlarge"
+      instance_type                 = "m5.4xlarge"
       additional_userdata           = "echo foo bar"
       additional_security_group_ids = [aws_security_group.worker_group_mgmt.id]
       asg_desired_capacity          = 2
